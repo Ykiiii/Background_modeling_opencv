@@ -1,0 +1,54 @@
+import cv2
+import numpy as np
+from PIL import Image
+from matplotlib import pyplot as plt
+
+videodir = 'E:\Document\jpgdata\saveVideo.avi'
+
+# 第一步：使用cv2.VideoCapture读取视频，0为获取网络摄像头
+cap = cv2.VideoCapture(0)
+# 第二步：cv2.getStructuringElement构造形态学使用的kernel（开运算的核）
+kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
+# 第三步：构造高斯混合、KNN、GMG模型
+model = cv2.createBackgroundSubtractorMOG2()
+# model = cv2.createBackgroundSubtractorKNN()
+# model = cv2.bgsegm.createBackgroundSubtractorGMG(initializationFrames=3)
+
+i,ret = 0,1
+l = []
+while ret:
+    i+=1
+    # 第四步：读取视频中的图片，并使用高斯模型进行拟合
+    ret, frame = cap.read()
+    # 运用高斯模型进行拟合，在两个标准差内设置为0，在两个标准差外设置为255
+    fgmk = model.apply(frame)
+    # 第五步：使用形态学的开运算做背景的去除
+    fgmk = cv2.morphologyEx(fgmk, cv2.MORPH_OPEN, kernel)
+    # 第六步：cv2.findContours计算fgmk的轮廓
+    contours = cv2.findContours(fgmk, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[1]
+#     print("NO. ",i,)
+    for c in contours:
+        # 第七步：进行人的轮廓判断，使用周长，符合条件的画出外接矩阵的方格（也可以使用面积或其他）
+        length = cv2.arcLength(c, True)
+#         print(length)
+        l.append(length)
+        if length > 150:
+            (x, y, w, h) = cv2.boundingRect(c)
+            cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+#             print(x, y, w, h)
+    # 第八步：进行图片的展示
+    cv2.imshow('fgmk', fgmk)
+    cv2.imshow('frame', frame)
+#     cv2.imwrite('E:\Document\Mathematical_modeling\C\img_result\GMG\O\\'+str(i)+'.jpg',frame)
+#     cv2.imwrite('E:\Document\Mathematical_modeling\C\img_result\GMG\B\\'+str(i)+'.jpg',fgmk)
+    
+#     image = Image.fromarray(frame.astype('uint8')).convert('RGB')
+#     plt.imshow(image)
+#     plt.axis('off')
+#     plt.show()
+    
+    if cv2.waitKey(150) & 0xff == 27:
+        break
+
+cap.release()
+cv2.destroyAllWindows()
